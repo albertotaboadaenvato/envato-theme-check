@@ -1,45 +1,74 @@
 <?php
-/*
-Plugin Name: Envato Theme Check
-Plugin URI: https://github.com/envato/Envato-Theme-Check
-Description: Envato Theme Check is a modified fork of the original Theme Check by Otto42 with additional Themeforest specific WordPress checks.
-Author: Scott Parry
-Author URI: https://envato.com
-Version: 2.0.0
-Text Domain: theme-check
-License: GPLv2
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
-*/
+/**
+ * Plugin Name: Envato Theme Check
+ * Plugin URI: https://github.com/envato/Envato-Theme-Check
+ * Description: Envato Theme Check is a modified fork of the original Theme Check by Otto42 with additional Themeforest specific WordPress checks.
+ * Author: Scott Parry
+ * Author URI: https://envato.com
+ * Version: 2.1.0
+ * Requires PHP: 8.1
+ * Text Domain: theme-check
+ * License: GPLv2
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ *
+ * @package Theme Check
+ */
+
+declare(strict_types=1);
 
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	include 'theme-check-cli.php';
 }
 
-class EnvatoThemeCheck  {
-	function __construct() {
+/**
+ * Admin page bootstrap: menu entry, styles and the Theme Check screen.
+ */
+class EnvatoThemeCheck {
+	/**
+	 * Hook the admin page.
+	 */
+	public function __construct() {
 		add_action( 'admin_init', array( $this, 'tc_i18n' ) );
 		add_action( 'admin_menu', array( $this, 'themecheck_add_page' ) );
 	}
 
-	function tc_i18n() {
+	/**
+	 * Load translations.
+	 */
+	public function tc_i18n(): void {
 		load_plugin_textdomain( 'theme-check', false, dirname( plugin_basename( __FILE__ ) ) . '/lang/' );
 	}
 
-	function load_styles() {
+	/**
+	 * Enqueue the Theme Check screen stylesheet.
+	 */
+	public function load_styles(): void {
 		wp_enqueue_style( 'style', plugins_url( 'assets/style.css', __FILE__ ), array(), '1', 'screen' );
 	}
 
-	function themecheck_add_page() {
+	/**
+	 * Register Appearance > Theme Check.
+	 */
+	public function themecheck_add_page(): void {
 		$page = add_theme_page( 'Theme Check', 'Theme Check', 'manage_options', 'themecheck', array( $this, 'themecheck_do_page' ) );
 		add_action( 'admin_print_styles-' . $page, array( $this, 'load_styles' ) );
 	}
 
-	function tc_add_headers( $extra_headers ) {
+	/**
+	 * Extra style.css headers read by the checks (`extra_theme_headers` filter).
+	 *
+	 * @param mixed $extra_headers Headers from other filters (replaced, as before).
+	 * @return list<string>
+	 */
+	public function tc_add_headers( mixed $extra_headers ): array {
 		$extra_headers = array( 'License', 'License URI', 'Template Version' );
 		return $extra_headers;
 	}
 
-	function themecheck_do_page() {
+	/**
+	 * Render the Theme Check screen and, on submit, run the checks.
+	 */
+	public function themecheck_do_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'theme-check' ) );
 		}
@@ -66,9 +95,8 @@ class EnvatoThemeCheck  {
 				define( 'TC_TRAC', true );
 			}
 
-			wp_raise_memory_limit();
-
-			check_main( wp_unslash( $_POST['themename'] ) );
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- theme directory name; check_main() validates it via wp_get_theme()->exists().
+			check_main( (string) wp_unslash( $_POST['themename'] ) );
 		}
 		?>
 		</div> <!-- .theme-check-->
