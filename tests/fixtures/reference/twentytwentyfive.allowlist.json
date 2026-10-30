@@ -1,0 +1,30 @@
+[
+	{
+		"check": "style-tags",
+		"file": "",
+		"line": 0,
+		"reason": "True positive: style.css declares the accessibility-ready tag; the reviewer must verify the a11y claim, so the INFO is expected.",
+		"confirmed_by": "alberto.taboada (pending review)"
+	},
+	{
+		"check": "textdomain",
+		"file": "",
+		"line": 0,
+		"reason": "known FP, tracked: core-theme exception list stops at twentytwentyone, so the dir/slug WARNING (twenty-twenty-five) fires on twentytwentyfive. See docs/SPEC.md Known false positives.",
+		"confirmed_by": "alberto.taboada (pending review)"
+	},
+	{
+		"check": "textdomain",
+		"file": "",
+		"line": 0,
+		"reason": "True positive (informational): theme uses a single text domain, twentytwentyfive; the INFO summary is always emitted.",
+		"confirmed_by": "alberto.taboada (pending review)"
+	},
+	{
+		"check": "php-compatibility",
+		"file": "",
+		"line": 0,
+		"reason": "Informational: evaluated range line is always emitted",
+		"confirmed_by": "alberto.taboada (pending review)"
+	}
+]
