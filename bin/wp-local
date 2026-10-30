@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Run wp-cli against the Local site, using Local's MySQL socket.
+# (The wp phar ignores WP_CLI_PHP_ARGS, so invoke php -d directly.)
+SOCK="${TC_MYSQL_SOCKET:-$(ls -t "$HOME"/Library/Application\ Support/Local/run/*/mysql/mysqld.sock 2>/dev/null | head -1)}"
+exec php -d "mysqli.default_socket=$SOCK" "$(command -v wp)" --path="$(cd "$(dirname "$0")/../../../.." && pwd)" "$@"

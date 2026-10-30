@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<ruleset name="Envato Theme Check">
+	<description>Coding standards for the Envato Theme Check plugin.</description>
+
+	<file>.</file>
+
+	<exclude-pattern>vendor/*</exclude-pattern>
+	<exclude-pattern>vendor-bin/*</exclude-pattern>
+	<exclude-pattern>tests/fixtures/*</exclude-pattern>
+	<exclude-pattern>assets/*</exclude-pattern>
+	<exclude-pattern>node_modules/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg value="ps"/>
+	<arg name="colors"/>
+
+	<config name="testVersion" value="8.1-"/>
+
+	<!--
+		Quality gate: errors fail `composer lint`; warnings are reported but do not
+		change the exit code (the remaining ones are legacy loose comparisons and
+		reviewed exceptions, tracked separately).
+	-->
+	<config name="ignore_warnings_on_exit" value="1"/>
+
+	<rule ref="WordPress"/>
+	<rule ref="PHPCompatibilityWP"/>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="theme-check"/>
+			</property>
+		</properties>
+	</rule>
+	<!--
+		Check files are named after their check id (class-<id>-check.php) and the
+		plugin entry/CLI files keep their WordPress.org names. Renaming them would
+		break the check catalogue in docs/SPEC.md and every plugin/CLI loader.
+	-->
+	<rule ref="WordPress.Files.FileName.InvalidClassFileName">
+		<exclude-pattern>checks/*</exclude-pattern>
+		<exclude-pattern>theme-check.php</exclude-pattern>
+		<exclude-pattern>theme-check-cli.php</exclude-pattern>
+	</rule>
+
+	<!--
+		Legacy procedural layout kept on purpose (see project planning docs, feature 001 plan,
+		Structure Decision): these root files mix the bootstrap functions with the
+		classes/interface they load, and splitting them would break
+		themecheck_checks_loaded consumers.
+	-->
+	<rule ref="Universal.Files.SeparateFunctionsFromOO.Mixed">
+		<exclude-pattern>checkbase.php</exclude-pattern>
+		<exclude-pattern>theme-check.php</exclude-pattern>
+		<exclude-pattern>theme-check-cli.php</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Files.OneObjectStructurePerFile">
+		<exclude-pattern>checkbase.php</exclude-pattern>
+		<exclude-pattern>theme-check.php</exclude-pattern>
+		<exclude-pattern>theme-check-cli.php</exclude-pattern>
+	</rule>
+
+	<!--
+		The lower-case `themecheck` interface in checkbase.php is public API
+		implemented by every check class (and third-party checks); renaming it
+		is a breaking change. checkbase.php declares no other class.
+	-->
+	<rule ref="PEAR.NamingConventions.ValidClassName.StartWithCapital">
+		<exclude-pattern>checkbase.php</exclude-pattern>
+	</rule>
+</ruleset>
