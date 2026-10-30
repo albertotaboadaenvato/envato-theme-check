@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Checks if style.css includes theme and author URI
  */
@@ -12,18 +14,18 @@ class Suggested_Styles_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		// Combine all the css files into one string to make it easier to search.
 		$css = implode( ' ', $css_files );
@@ -37,7 +39,8 @@ class Suggested_Styles_Check implements themecheck {
 
 		foreach ( $checks as $key => $check ) {
 			if ( ! preg_match( '/' . $key . '/i', $css, $matches ) ) {
-				$this->error[] = sprintf( '<span class="tc-lead tc-recommended">' . __( 'RECOMMENDED', 'theme-check' ) . '</span>: ' . __( '%s is missing from your style.css header.', 'theme-check' ), '<strong>' . $check . '</strong>' );
+				/* translators: %s: style.css header name */
+				$this->error[] = sprintf( '<span class="tc-lead tc-recommended">' . __( 'RECOMMENDED', 'theme-check' ) . '</span>: ' . __( '%s is missing from your style.css header.', 'theme-check' ), '<strong>' . $check . '</strong>' ) . tc_finding_suffix( 'suggested-styles' );
 			}
 		}
 
@@ -58,7 +61,7 @@ class Suggested_Styles_Check implements themecheck {
 					'<span class="tc-lead tc-recommended">%s</span> %s',
 					__( 'RECOMMENDED', 'theme-check' ),
 					$check
-				);
+				) . tc_finding_suffix( 'suggested-styles' );
 			}
 		}
 
@@ -70,7 +73,12 @@ class Suggested_Styles_Check implements themecheck {
 	 *
 	 * @return array Error message.
 	 */
-	public function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

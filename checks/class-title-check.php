@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Checks for the title:
  * Is there a call to wp_title()?
@@ -16,18 +18,18 @@ class Title_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		$php = implode( ' ', $php_files );
 
@@ -42,6 +44,7 @@ class Title_Check implements themecheck {
 					'<span class="tc-lead tc-recommended">%s</span>: %s. %s',
 					__( 'RECOMMENDED', 'theme-check' ),
 					sprintf(
+						/* translators: %s: file name */
 						__( '<strong>wp_title()</strong> was found in the file %1$s. wp_title was historically used for the document &lt;title&gt; tag and was never intended for other purposes. Use <strong>add_theme_support( "title-tag" )</strong> instead', 'theme-check' ),
 						'<strong>' . tc_filename( $file_path ) . '</strong>'
 					),
@@ -61,6 +64,7 @@ class Title_Check implements themecheck {
 					'<span class="tc-lead tc-recommended">%s</span>: %s. %s',
 					__( 'RECOMMENDED', 'theme-check' ),
 					sprintf(
+						/* translators: %s: file name */
 						__( '<strong>&lt;title&gt;</strong> tag was found in the file %1$s. Document titles must not be hard coded, use <strong>add_theme_support( "title-tag" )</strong> instead', 'theme-check' ),
 						'<strong>' . tc_filename( $file_path ) . '</strong>'
 					),
@@ -70,7 +74,6 @@ class Title_Check implements themecheck {
 		}
 
 		return true;
-
 	}
 
 	/**
@@ -78,7 +81,12 @@ class Title_Check implements themecheck {
 	 *
 	 * @return array Error message.
 	 */
-	public function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

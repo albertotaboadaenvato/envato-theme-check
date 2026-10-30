@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Checks if the theme has a copyright notice.
  */
@@ -12,32 +14,42 @@ class Copyright_Notice_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
-	protected $slug;
+	/**
+	 * Theme slug, set from the check context.
+	 *
+	 * @var string|null
+	 */
+	protected ?string $slug = null;
 
-	function set_context( $data ) {
+	/**
+	 * Set context.
+	 *
+	 * @param array<string, mixed> $data Context.
+	 */
+	public function set_context( $data ): void {
 		if ( isset( $data['slug'] ) ) {
-			$this->slug = $data['slug'];
+			$this->slug = (string) $data['slug'];
 		}
 	}
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		// Get a list of file names and check for the readme, license.txt and style.css.
 		$combined_files = $css_files + $other_files;
 		$content        = '';
 
-		// Get the contents of themeslug/filename:
+		// Get the contents of themeslug/filename.
 		foreach ( $combined_files as $path => $contents ) {
 			if ( stripos( $path, $this->slug . '/readme.txt' ) ||
 				stripos( $path, $this->slug . '/readme.md' ) ||
@@ -65,9 +77,9 @@ class Copyright_Notice_Check implements themecheck {
 	/**
 	 * Get error messages from the checks.
 	 *
-	 * @return array Error message.
+	 * @return array<int, string> Error message.
 	 */
-	public function getError() {
+	public function getError(): array {
 		return $this->error;
 	}
 }

@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Checks if the tags in style.css are valid.
  */
@@ -13,25 +15,30 @@ class Style_Tags_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Array of theme tags in style.css
 	 *
-	 * @var array $tags
+	 * @var array<int, string> $tags
 	 */
-	protected $tags = array();
+	protected array $tags = array();
 
 	/**
 	 * The WP_Theme instance being checked.
 	 *
 	 * @var WP_Theme $wp_theme
 	 */
-	protected $wp_theme = false;
+	protected ?object $wp_theme = null;
 
-	function set_context( $data ) {
+	/**
+	 * Receive the check context.
+	 *
+	 * @param array<string, mixed> $data Check context (theme, slug, ...).
+	 */
+	public function set_context( array $data ): void {
 		if ( isset( $data['theme'] ) ) {
 			$this->tags     = $data['theme']['Tags'];
 			$this->wp_theme = $data['theme'];
@@ -41,11 +48,11 @@ class Style_Tags_Check implements themecheck {
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 		checkcount();
 
 		if ( ! $this->tags ) {
@@ -71,12 +78,13 @@ class Style_Tags_Check implements themecheck {
 					);
 				}
 
-				if ( ! in_array( strtolower( $tag ), $allowed_tags ) ) {
-					if ( in_array( strtolower( $tag ), $deprecated_tags ) ) {
+				if ( ! in_array( strtolower( $tag ), $allowed_tags, true ) ) {
+					if ( in_array( strtolower( $tag ), $deprecated_tags, true ) ) {
 						$this->error[] = sprintf(
 							'<span class="tc-lead tc-info">%s</span> %s',
 							__( 'INFO', 'theme-check' ),
 							sprintf(
+								/* translators: %s: tag name */
 								__( 'The tag %s has been deprecated, please remove it from your style.css header.', 'theme-check' ),
 								'<strong>' . $tag . '</strong>'
 							)
@@ -86,6 +94,7 @@ class Style_Tags_Check implements themecheck {
 							'<span class="tc-lead tc-info">%s</span> %s',
 							__( 'INFO', 'theme-check' ),
 							sprintf(
+								/* translators: %s: tag name */
 								__( 'Found wrong tag, remove %s from your style.css header.', 'theme-check' ),
 								'<strong>' . $tag . '</strong>'
 							)
@@ -93,12 +102,12 @@ class Style_Tags_Check implements themecheck {
 					}
 				}
 
-				if ( in_array( strtolower( $tag ), $subject_tags ) ) {
+				if ( in_array( strtolower( $tag ), $subject_tags, true ) ) {
 					$subject_tags_name .= strtolower( $tag ) . ', ';
-					$subject_tags_count++;
+					++$subject_tags_count;
 				}
 
-				if ( $tag === 'full-site-editing' && $this->wp_theme ) {
+				if ( 'full-site-editing' === $tag && $this->wp_theme ) {
 					$theme_dir = $this->wp_theme->get_stylesheet_directory();
 
 					// Check if the theme has all the required files.
@@ -113,6 +122,7 @@ class Style_Tags_Check implements themecheck {
 							'<span class="tc-lead tc-required">%s</span> %s',
 							__( 'REQUIRED', 'theme-check' ),
 							sprintf(
+								/* translators: %s: tag name */
 								__( 'The tag %s is being used, please remove it from your style.css header. It is only allowed for Block Themes.', 'theme-check' ),
 								'<strong>' . $tag . '</strong>'
 							)
@@ -120,12 +130,13 @@ class Style_Tags_Check implements themecheck {
 					}
 				}
 
-				if ( in_array( strtolower( $tag ), $allowed_tags ) ) {
+				if ( in_array( strtolower( $tag ), $allowed_tags, true ) ) {
 					if ( count( array_keys( $this->tags, $tag ) ) > 1 ) {
 						$this->error[] = sprintf(
 							'<span class="tc-lead tc-info">%s</span> %s',
 							__( 'INFO', 'theme-check' ),
 							sprintf(
+								/* translators: %s: tag name */
 								__( 'The tag %s is being used more than once, please remove it from your style.css header.', 'theme-check' ),
 								'<strong>' . $tag . '</strong>'
 							)
@@ -139,6 +150,7 @@ class Style_Tags_Check implements themecheck {
 					'<span class="tc-lead tc-info">%s</span>: %s %s',
 					__( 'INFO', 'theme-check' ),
 					sprintf(
+						/* translators: 1: number of subject tags, 2: list of subject tags */
 						__( 'A maximum of 3 subject tags are allowed. The theme has %1$u subjects tags ( %2$s ). Please remove the subject tags, which do not directly apply to the theme.', 'theme-check' ),
 						$subject_tags_count,
 						'<strong>' . rtrim( $subject_tags_name, ', ' ) . '</strong>'
@@ -158,16 +170,16 @@ class Style_Tags_Check implements themecheck {
 	/**
 	 * Get error messages from the checks.
 	 *
-	 * @return array Error message.
+	 * @return array<int, string> Error messages.
 	 */
-	public function getError() {
+	public function getError(): array {
 		return $this->error;
 	}
 
 	/**
 	 * Get full list of allowed tags - including subject tags.
 	 *
-	 * @return array
+	 * @return array<int, string>
 	 */
 	private function get_allowed_tags() {
 		$allowed_tags = array(
@@ -212,7 +224,12 @@ class Style_Tags_Check implements themecheck {
 	/**
 	 * Get the list of subject tags.
 	 *
-	 * @return array
+	 * @return array<int, string>
+	 */
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
 	 */
 	private function get_subject_tags() {
 		return array(
@@ -231,7 +248,7 @@ class Style_Tags_Check implements themecheck {
 	/**
 	 * Get the list of deprecated tags.
 	 *
-	 * @return array
+	 * @return array<int, string>
 	 */
 	private function get_deprecated_tags() {
 		return array(

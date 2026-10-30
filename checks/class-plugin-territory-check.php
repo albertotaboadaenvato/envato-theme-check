@@ -7,6 +7,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Checks for Plugin Territory
  */
@@ -14,18 +16,18 @@ class Plugin_Territory_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 		$ret = true;
 
 		// Functions that are required to be removed from the theme.
@@ -83,13 +85,14 @@ class Plugin_Territory_Check implements themecheck {
 						'<span class="tc-lead tc-required">%s</span>: %s',
 						__( 'REQUIRED', 'theme-check' ),
 						sprintf(
+							/* translators: 1: function name, 2: file name, 3: code excerpt */
 							__( 'The theme uses the %1$s function in the file %2$s. %1$s is plugin-territory functionality and must not be used in themes. Use a plugin instead. %3$s', 'theme-check' ),
 							'<strong>' . esc_html( $function ) . '()</strong>',
 							esc_html( $filename ),
 							$grep
 						)
-					);
-					$ret           = false;
+					) . tc_finding_suffix( 'plugin-territory' );
+					$ret = false;
 				}
 			}
 
@@ -103,14 +106,15 @@ class Plugin_Territory_Check implements themecheck {
 							'<span class="tc-lead tc-required">%s</span>: %s',
 							__( 'REQUIRED', 'theme-check' ),
 							sprintf(
+								/* translators: 1: hook name, 2: hook type, 3: file name, 4: code excerpt */
 								__( 'The theme uses the %1$s %2$s in the file %3$s. This is plugin-territory functionality and must not be used in themes. Use a plugin instead. %4$s', 'theme-check' ),
 								'<strong>' . esc_html( $hook ) . '</strong>',
 								esc_html( $type ),
 								$filename,
 								$grep
 							)
-						);
-						$ret           = false;
+						) . tc_finding_suffix( 'plugin-territory' );
+						$ret = false;
 					}
 				}
 			}
@@ -125,14 +129,15 @@ class Plugin_Territory_Check implements themecheck {
 							'<span class="tc-lead tc-required">%s</span>: %s',
 							__( 'REQUIRED', 'theme-check' ),
 							sprintf(
+								/* translators: 1: hook name, 2: callback name, 3: file name, 4: code excerpt */
 								__( 'The theme uses <strong>remove_action %1$s %2$s</strong> in the file %3$s. This is plugin-territory functionality and must not be used in themes. Use a plugin instead. %4$s', 'theme-check' ),
 								esc_html( $hook ),
 								esc_html( $function ),
 								$filename,
 								$grep
 							)
-						);
-						$ret           = false;
+						) . tc_finding_suffix( 'plugin-territory' );
+						$ret = false;
 					}
 				}
 			}
@@ -146,7 +151,12 @@ class Plugin_Territory_Check implements themecheck {
 	 *
 	 * @return array Error message.
 	 */
-	public function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

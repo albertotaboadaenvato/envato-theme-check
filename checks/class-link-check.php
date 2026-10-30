@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Check if there are hard-coded links
  *
@@ -14,18 +16,23 @@ class Link_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Theme information. Author URI, theme URI, Author name
 	 *
 	 * @var object $theme
 	 */
-	protected $theme;
+	protected ?object $theme = null;
 
-	function set_context( $data ) {
+	/**
+	 * Receive the check context.
+	 *
+	 * @param array<string, mixed> $data Check context (theme, slug, ...).
+	 */
+	public function set_context( array $data ): void {
 		if ( isset( $data['theme'] ) ) {
 			$this->theme = $data['theme'];
 		}
@@ -34,15 +41,14 @@ class Link_Check implements themecheck {
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 		if ( ! $this->theme ) {
 			return true;
 		}
-
 
 		foreach ( $php_files as $php_key => $phpfile ) {
 			checkcount();
@@ -72,6 +78,7 @@ class Link_Check implements themecheck {
 						'<span class="tc-lead tc-info">%s</span>: %s %s',
 						__( 'INFO', 'theme-check' ),
 						sprintf(
+							/* translators: %s: file name */
 							__( 'Possible hard-coded links were found in the file %s.', 'theme-check' ),
 							'<strong>' . $filename . '</strong>'
 						),
@@ -89,7 +96,12 @@ class Link_Check implements themecheck {
 	 *
 	 * @return array Error message.
 	 */
-	public function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

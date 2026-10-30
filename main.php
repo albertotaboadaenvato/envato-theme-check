@@ -5,12 +5,14 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Present theme information and test results.
  *
  * @param string $theme_slug theme slug of the theme to be tested.
  */
-function check_main( $theme_slug ) {
+function check_main( string $theme_slug ): void {
 	global $checkcount;
 
 	/**
@@ -37,7 +39,7 @@ function check_main( $theme_slug ) {
 		$image_filesize  = filesize( $screenshot_file );
 
 		echo '<div style="float:right" class="theme-info"><img style="max-height:180px;" src="' . esc_url( $theme->get_screenshot() ) . '" />';
-		echo '<br /><div style="text-align:center">' . intval( $image_size[0] ) . 'x' . intval( $image_size[1] ) . ' ' . round( $image_filesize / 1024 ) . 'k</div></div>';
+		echo '<br /><div style="text-align:center">' . intval( $image_size[0] ) . 'x' . intval( $image_size[1] ) . ' ' . esc_html( (string) round( $image_filesize / 1024 ) ) . 'k</div></div>';
 	}
 
 	echo ( ! empty( $theme['Title'] ) ) ? '<p><label>' . esc_html__( 'Title', 'theme-check' ) . '</label><span class="info">' . esc_html( $theme['Title'] ) . '</span></p>' : '';
@@ -45,8 +47,20 @@ function check_main( $theme_slug ) {
 	echo ( ! empty( $theme->get( 'Author' ) ) ) ? '<p><label>' . esc_html__( 'Author', 'theme-check' ) . '</label><span class="info">' . esc_html( $theme->get( 'Author' ) ) . '</span></p>' : '';
 	echo ( ! empty( $theme->get( 'AuthorURI' ) ) ) ? '<p><label>' . esc_html__( 'Author URI', 'theme-check' ) . '</label><span class="info"><a href="' . esc_url( $theme->get( 'AuthorURI' ) ) . '">' . esc_html( $theme->get( 'AuthorURI' ) ) . '</a></span></p>' : '';
 	echo ( ! empty( $theme->get( 'ThemeURI' ) ) ) ? '<p><label>' . esc_html__( 'Theme URI', 'theme-check' ) . '</label><span class="info"><a href="' . esc_url( $theme->get( 'ThemeURI' ) ) . '">' . esc_html( $theme->get( 'ThemeURI' ) ) . '</a></span></p>' : '';
-	echo ( ! empty( $theme->get( 'License' ) ) ) ? '<p><label>' . esc_html__( 'License', 'theme-check' ) . '</label><span class="info">' . esc_html( $theme->get( 'License' ) ) . '</span></p>' : '';
-	echo ( ! empty( $theme->get( 'License URI' ) ) ) ? '<p><label>' . esc_html__( 'License URI', 'theme-check' ) . '</label><span class="info">' . esc_html( $theme->get( 'License URI' ) ) . '</span></p>' : '';
+	/**
+	 * License headers come from the extra_theme_headers filter; the stubs only know core headers.
+	 *
+	 * @var string|false $license
+	 */
+	$license = $theme->get( 'License' );
+	/**
+	 * See $license.
+	 *
+	 * @var string|false $license_uri
+	 */
+	$license_uri = $theme->get( 'License URI' );
+	echo ( ! empty( $license ) ) ? '<p><label>' . esc_html__( 'License', 'theme-check' ) . '</label><span class="info">' . esc_html( $license ) . '</span></p>' : '';
+	echo ( ! empty( $license_uri ) ) ? '<p><label>' . esc_html__( 'License URI', 'theme-check' ) . '</label><span class="info">' . esc_html( $license_uri ) . '</span></p>' : '';
 	echo ( ! empty( $theme['Tags'] ) ) ? '<p><label>' . esc_html__( 'Tags', 'theme-check' ) . '</label><span class="info">' . esc_html( implode( ', ', $theme['Tags'] ) ) . '</span></p>' : '';
 	echo ( ! empty( $theme['Description'] ) ) ? '<p><label>' . esc_html__( 'Description', 'theme-check' ) . '</label><span class="info">' . esc_html( $theme['Description'] ) . '</span></p>' : '';
 
@@ -60,35 +74,9 @@ function check_main( $theme_slug ) {
 		echo '</p>';
 	}
 
-	if ( $theme['Template Version'] /* Not supported by WordPress */ ) {
-		$parent_theme = $theme->parent();
-		if ( $theme['Template Version'] > $parent_theme['Version'] ) {
-			echo '<p>';
-			printf(
-				esc_html__( 'This child theme requires at least version %1$s of theme %2$s to be installed. You only have %3$s please update the parent theme.', 'theme-check' ),
-				'<strong>' . esc_html( $theme['Template Version'] ) . '</strong>',
-				'<strong>' . esc_html( $parent_theme['Title'] ) . '</strong>',
-				'<strong>' . esc_html( $parent_theme['Version'] ) . '</strong>'
-			);
-			echo '</p>';
-		}
-
-		if ( empty( $theme['Template Version'] ) ) {
-			echo '<p>' . __( 'Child theme does not have the <strong>Template Version</strong> tag in style.css.', 'theme-check' ) . '</p>';
-		} elseif ( $theme['Template Version'] < $parent_theme['Version'] ) {
-			echo '<p>';
-			printf(
-				esc_html__( 'Child theme is only tested up to version %1$s of %2$s breakage may occur! %3$s installed version is %4$s', 'theme-check' ),
-				esc_html( $theme['Template Version'] ),
-				esc_html( $parent_theme['Title'] ),
-				esc_html( $parent_theme['Title'] ),
-				esc_html( $parent_theme['Version'] )
-			);
-			echo '</p>';
-		}
-	}
 	echo '</div><!-- .theme-info-->';
 	echo '<p>' . sprintf(
+		/* translators: 1: number of checks run, 2: theme name */
 		esc_html__( 'Running %1$s tests against %2$s.', 'theme-check' ),
 		'<strong>' . esc_html( $checkcount ) . '</strong>',
 		'<strong>' . esc_html( $theme['Title'] ) . '</strong>'
@@ -97,9 +85,11 @@ function check_main( $theme_slug ) {
 	$results = display_themechecks();
 
 	if ( ! $success ) {
-		echo '<h2>' . sprintf( __( 'One or more errors were found for %1$s.', 'theme-check' ), esc_html( $theme['Title'] ) ) . '</h2>';
+		/* translators: %s: theme name */
+		echo '<h2>' . sprintf( esc_html__( 'One or more errors were found for %1$s.', 'theme-check' ), esc_html( $theme['Title'] ) ) . '</h2>';
 	} else {
-		echo '<h2>' . sprintf( __( '%1$s passed the tests', 'theme-check' ), esc_html( $theme['Title'] ) ) . '</h2>';
+		/* translators: %s: theme name */
+		echo '<h2>' . sprintf( esc_html__( '%1$s passed the tests', 'theme-check' ), esc_html( $theme['Title'] ) ) . '</h2>';
 		tc_success();
 	}
 
@@ -138,19 +128,24 @@ function check_main( $theme_slug ) {
 		)
 	);
 	echo '</ul></div>';
+
+	do_action( 'themecheck_after_results', $theme_slug );
 }
 
-function tc_intro() {
-?>
-	<h2><?php _e( 'About', 'theme-check' ); ?></h2>
-	<p><?php _e( "The Envato Theme Check plugin is an easy way to test your theme and make sure it's up to date with the latest Themeforest review standards. With it, you can run all the same automated testing tools on your theme that Themeforest Reviewers use for theme submissions.", 'theme-check' ); ?></p>
-<?php
+/**
+ * Print the introduction shown before a theme is checked.
+ */
+function tc_intro(): void {
+	?>
+	<h2><?php esc_html_e( 'About', 'theme-check' ); ?></h2>
+	<p><?php esc_html_e( "The Envato Theme Check plugin is an easy way to test your theme and make sure it's up to date with the latest Themeforest review standards. With it, you can run all the same automated testing tools on your theme that Themeforest Reviewers use for theme submissions.", 'theme-check' ); ?></p>
+	<?php
 }
 
 /**
  * Present information about submitting themes.
  */
-function tc_success() {
+function tc_success(): void {
 	?>
 	<div class="tc-success"><p><?php esc_html_e( 'Now that your theme has passed the basic tests you need to check it properly using the test data before you upload it to the WordPress Themes Directory.', 'theme-check' ); ?></p>
 	<p>
@@ -175,11 +170,12 @@ function tc_success() {
 /**
  * Print the form for selecting the theme to test.
  */
-function tc_form() {
+function tc_form(): void {
 	echo '<form action="themes.php?page=themecheck" method="post">';
 	echo '<select name="themename">';
 
-	$selected_theme = isset( $_POST['themename'] ) ? wp_unslash( $_POST['themename'] ) : get_stylesheet();
+	// Only pre-selects the dropdown; themecheck_do_page() runs check_admin_referer( 'themecheck-nonce' ) before any check runs.
+	$selected_theme = isset( $_POST['themename'] ) ? sanitize_text_field( wp_unslash( $_POST['themename'] ) ) : get_stylesheet(); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 	foreach ( wp_get_themes() as $theme ) {
 		printf(
 			'<option %s value="%s">%s</option>',
