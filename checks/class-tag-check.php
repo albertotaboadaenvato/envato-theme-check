@@ -5,13 +5,27 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Checks if tags are supported.
  */
 class Tag_Check implements themecheck {
-	protected $error = array();
+	/**
+	 * Lookup data.
+	 *
+	 * @var array<int, string>
+	 */
+	protected array $error = array();
 
-	function check( $php_files, $css_files, $other_files ) {
+	/**
+	 * Run the check.
+	 *
+	 * @param array<string, string> $php_files   File paths and content for PHP files.
+	 * @param array<string, string> $css_files   File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
+	 */
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		// Combine all the php files into one string to make it easier to search.
 		$php = implode( ' ', $php_files );
@@ -33,7 +47,12 @@ class Tag_Check implements themecheck {
 		return true;
 	}
 
-	function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

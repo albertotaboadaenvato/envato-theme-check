@@ -1,0 +1,26 @@
+includes:
+	- vendor/szepeviktor/phpstan-wordpress/extension.neon
+	- phpstan-baseline.neon
+
+parameters:
+	level: 6
+	bootstrapFiles:
+		- vendor/squizlabs/php_codesniffer/autoload.php
+	paths:
+		- theme-check.php
+		- main.php
+		- checkbase.php
+		- theme-check-cli.php
+		- checks
+		- tests
+	excludePaths:
+		- tests/fixtures (?)
+		# Passthrough WP function doubles: analysing them shadows the wordpress-stubs signatures.
+		- tests/bootstrap-unit.php
+	ignoreErrors:
+		# php-stubs/wp-cli-stubs is not installed; ignore unresolved WP-CLI / php-cli-tools symbols.
+		-
+			message: '#WP_CLI|cli\\Colors#'
+			reportUnmatched: false
+			identifier: class.notFound
+			path: theme-check-cli.php

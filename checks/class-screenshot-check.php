@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Check if the screenshot size is correct.
  */
@@ -12,18 +14,18 @@ class Screenshot_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		$ret       = true;
 		$filenames = array();
@@ -35,8 +37,8 @@ class Screenshot_Check implements themecheck {
 		checkcount();
 
 		if (
-			in_array( 'screenshot.png', $filenames ) ||
-			in_array( 'screenshot.jpg', $filenames )
+			in_array( 'screenshot.png', $filenames, true ) ||
+			in_array( 'screenshot.jpg', $filenames, true )
 		) {
 
 			foreach ( $other_files as $other_key => $otherfile ) {
@@ -55,13 +57,14 @@ class Screenshot_Check implements themecheck {
 							'<span class="tc-lead tc-required">%s</span> %s',
 							__( 'REQUIRED', 'theme-check' ),
 							sprintf(
+								/* translators: %s: detected screenshot size, e.g. 1200x900 */
 								__( 'Screenshot is wrong size! Detected: %s. Maximum allowed size is 1200x900px.', 'theme-check' ),
 								'<strong>' . $image[0] . 'x' . $image[1] . '</strong>'
 							)
 						);
-						$ret           = false;
+						$ret = false;
 					}
-					if ( $image[1] / $image[0] != 0.75 ) {
+					if ( 0.75 != $image[1] / $image[0] ) {
 						$this->error[] = sprintf(
 							'<span class="tc-lead tc-required">%s</span> %s',
 							__( 'REQUIRED', 'theme-check' ),
@@ -69,7 +72,7 @@ class Screenshot_Check implements themecheck {
 						);
 						$ret           = false;
 					}
-					if ( $image[0] != 1200 || $image[1] != 900 ) {
+					if ( 1200 != $image[0] || 900 != $image[1] ) {
 						$this->error[] = sprintf(
 							'<span class="tc-lead tc-recommended">%s</span> %s',
 							__( 'RECOMMENDED', 'theme-check' ),
@@ -94,7 +97,12 @@ class Screenshot_Check implements themecheck {
 	 *
 	 * @return array Error message.
 	 */
-	public function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

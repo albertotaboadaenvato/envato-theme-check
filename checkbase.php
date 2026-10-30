@@ -8,6 +8,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 // main global to hold our checks.
 global $themechecks;
 $themechecks = array();
@@ -23,11 +25,22 @@ $theme_check_current_theme = false;
 // interface that all checks should implement.
 interface themecheck {
 
-	// should return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
-	public function check( $php_files, $css_files, $other_files );
+	/**
+	 * Run the check. Parameter types stay undeclared so existing implementations remain compatible.
+	 *
+	 * @param array<string, string> $php_files   PHP file contents keyed by path.
+	 * @param array<string, string> $css_files   CSS file contents keyed by path.
+	 * @param array<string, string> $other_files Other file contents keyed by path.
+	 * @return bool True for good/okay/acceptable, false for bad/not-okay/unacceptable.
+	 */
+	public function check( $php_files, $css_files, $other_files ): bool;
 
-	// should return an array of strings explaining any problems found.
-	public function getError();
+	/**
+	 * Problems found by the last check() run.
+	 *
+	 * @return array<int|string, string> Messages explaining any problems found.
+	 */
+	public function getError(): array; // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- interface implemented by every check.
 }
 
 // load all the checks in the checks directory.
@@ -38,49 +51,76 @@ foreach ( glob( __DIR__ . '/checks/*.php' ) as $file ) {
 do_action( 'themecheck_checks_loaded' );
 
 /**
+ * Suffix appended to a finding message; extensions add one via the `themecheck_finding_suffix` filter.
+ *
+ * @param string $key Check id (class file name minus `class-`/`-check`), or `<check-id>/<finding_key>`.
+ * @return string '' unless a callback returns a suffix.
+ */
+function tc_finding_suffix( string $key ): string {
+	return (string) apply_filters( 'themecheck_finding_suffix', '', $key );
+}
+
+/**
+ * Collect and prepare a theme's files for the checks. Shared by the admin and WP-CLI runners.
+ *
+ * Hidden folders need no filter here: WP_Theme::get_files() (scandir) already skips
+ * dot-prefixed entries, so Directories_Check can only fire on hidden names surfaced another way.
+ *
+ * @param WP_Theme $theme A WP_Theme instance.
+ * @return array{php: array<string, string>, css: array<string, string>, other: array<string, string>} Contents keyed by absolute path.
+ */
+function tc_collect_theme_files( WP_Theme $theme ): array {
+	wp_raise_memory_limit( 'admin' );
+
+	$files = $theme->get_files(
+		null, /* all file types */
+		-1, /* infinite recursion */
+		true /* include parent theme files */
+	);
+	unset( $files[0] ); // Work around https://core.trac.wordpress.org/ticket/53599.
+
+	$collected = array(
+		'php'   => array(),
+		'css'   => array(),
+		'other' => array(),
+	);
+
+	foreach ( $files as $filename ) {
+		if ( false !== strpos( $filename, 'tgm-plugin-activation' ) || false !== strpos( $filename, 'class-merlin' ) || is_dir( $filename ) ) {
+			continue;
+		}
+		if ( '.php' === substr( $filename, -4 ) ) {
+			$collected['php'][ $filename ] = tc_strip_comments( (string) file_get_contents( $filename ) );
+		} elseif ( '.css' === substr( $filename, -4 ) ) {
+			$collected['css'][ $filename ] = (string) file_get_contents( $filename );
+		} else {
+			// In local development it might be useful to skip other files
+			// (non .php or .css files) in dev directories.
+			if ( apply_filters( 'tc_skip_development_directories', false ) && tc_is_other_file_in_dev_directory( $filename ) ) {
+				continue;
+			}
+			$collected['other'][ $filename ] = (string) file_get_contents( $filename );
+		}
+	}
+
+	return $collected;
+}
+
+/**
  * Run Theme Check against a given theme.
  *
  * @param WP_Theme $theme      A WP_Theme instance.
  * @param string   $theme_slug The slug of the given theme.
  * @return bool
  */
-function run_themechecks_against_theme( $theme, $theme_slug ) {
-	$files = $theme->get_files(
-		null /* all file types */,
-		-1 /* infinite recursion */,
-		true /* include parent theme files */
-	);
-	unset( $files[0] ); // Work around https://core.trac.wordpress.org/ticket/53599
-
-	$php   = array();
-	$css   = array();
-	$other = array();
-
-	foreach ( $files as $filename ) {
-		if ( strpos( $filename, 'tgm-plugin-activation' ) === false && strpos( $filename, 'class-merlin' ) === false ) {
-			if ( substr( $filename, -4 ) === '.php' ) {
-				$php[ $filename ] = file_get_contents( $filename );
-				$php[ $filename ] = tc_strip_comments( $php[ $filename ] );
-			} elseif ( substr( $filename, -4 ) === '.css' ) {
-				$css[ $filename ] = file_get_contents( $filename );
-			} else {
-				// In local development it might be useful to skip other files
-				// (non .php or .css files) in dev directories.
-				if ( apply_filters( 'tc_skip_development_directories', false ) ) {
-					if ( tc_is_other_file_in_dev_directory( $filename ) ) {
-						continue;
-					}
-				}
-				$other[ $filename ] = file_get_contents( $filename );
-			}
-		}
-	}
+function run_themechecks_against_theme( WP_Theme $theme, string $theme_slug ): bool {
+	$files = tc_collect_theme_files( $theme );
 
 	// Run the checks.
 	return run_themechecks(
-		$php,
-		$css,
-		$other,
+		$files['php'],
+		$files['css'],
+		$files['other'],
 		array(
 			'theme' => $theme,
 			'slug'  => $theme_slug,
@@ -91,14 +131,14 @@ function run_themechecks_against_theme( $theme, $theme_slug ) {
 /**
  * Run the Theme Checks against a set of files.
  *
- * @param array $php     The PHP files.
- * @param array $css     The CSS files.
- * @param array $other   Any non-php/css files.
- * @param array $context Any context for the Theme Checks.
+ * @param array<string, string> $php     The PHP files.
+ * @param array<string, string> $css     The CSS files.
+ * @param array<string, string> $other   Any non-php/css files.
+ * @param array<string, mixed>  $context Any context for the Theme Checks.
  *
  * @return bool
  */
-function run_themechecks( $php, $css, $other, $context = array() ) {
+function run_themechecks( array $php, array $css, array $other, array $context = array() ): bool {
 	global $themechecks, $theme_check_current_theme;
 
 	// Provide context to some functions that need to know the current theme, but aren't passed the object.
@@ -120,10 +160,15 @@ function run_themechecks( $php, $css, $other, $context = array() ) {
 
 	$theme_check_current_theme = false;
 
-	return $pass;
+	return (bool) $pass;
 }
 
-function display_themechecks() {
+/**
+ * Collect every check's errors as the HTML (or Trac) result list.
+ *
+ * @return string
+ */
+function display_themechecks(): string {
 	$results = '';
 	global $themechecks;
 	$errors = array();
@@ -137,13 +182,15 @@ function display_themechecks() {
 		}
 	}
 	if ( ! empty( $errors ) ) {
+		// Only reached from check_main(), after themecheck_do_page() has run check_admin_referer( 'themecheck-nonce' ).
+		$suppress_info = isset( $_POST['s_info'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		rsort( $errors );
 		foreach ( $errors as $e ) {
 
 			if ( defined( 'TC_TRAC' ) ) {
-				$results .= ( isset( $_POST['s_info'] ) && preg_match( '/INFO/', $e ) ) ? '' : '* ' . tc_trac( $e ) . "\r\n";
+				$results .= ( $suppress_info && preg_match( '/INFO/', (string) $e ) ) ? '' : '* ' . tc_trac( (string) $e ) . "\r\n";
 			} else {
-				$results .= ( isset( $_POST['s_info'] ) && preg_match( '/INFO/', $e ) ) ? '' : '<li>' . tc_trac( $e ) . '</li>';
+				$results .= ( $suppress_info && preg_match( '/INFO/', (string) $e ) ) ? '' : '<li>' . tc_trac( (string) $e ) . '</li>';
 			}
 		}
 	}
@@ -162,13 +209,22 @@ function display_themechecks() {
 	return $results;
 }
 
-function checkcount() {
+/**
+ * Increment the global check counter.
+ */
+function checkcount(): void {
 	global $checkcount;
-	$checkcount++;
+	++$checkcount;
 }
 
-// some functions theme checks use.
-function tc_grep( $error, $file ) {
+/**
+ * Lines of a file containing a literal string, as `<pre>` snippets with the match highlighted.
+ *
+ * @param string $error Literal to search for (case-insensitive).
+ * @param string $file  Absolute path.
+ * @return string
+ */
+function tc_grep( string $error, string $file ): string {
 	if ( ! file_exists( $file ) ) {
 		return '';
 	}
@@ -182,15 +238,22 @@ function tc_grep( $error, $file ) {
 			$error      = ltrim( $error );
 			$pos        = strpos( $this_line, $error );
 			$pre        = ( false !== $pos ? substr( $this_line, 0, $pos ) : false );
-			$pre        = ltrim( htmlspecialchars( $pre ) );
-			$bad_lines .= "<pre class='tc-grep'>" . __( 'Line ', 'theme-check' ) . ( $line_index + 1 ) . ': ' . $pre . htmlspecialchars( substr( stristr( $this_line, $error ), 0, 75 ) ) . '</pre>';
+			$pre        = ltrim( htmlspecialchars( (string) $pre ) );
+			$bad_lines .= "<pre class='tc-grep'>" . __( 'Line ', 'theme-check' ) . ( $line_index + 1 ) . ': ' . $pre . htmlspecialchars( substr( (string) stristr( $this_line, $error ), 0, 75 ) ) . '</pre>';
 		}
-		$line_index++;
+		++$line_index;
 	}
 	return str_replace( $error, '<span class="tc-grep">' . $error . '</span>', $bad_lines );
 }
 
-function tc_preg( $preg, $file ) {
+/**
+ * Lines of a file matching a regex, as `<pre>` snippets with the match highlighted.
+ *
+ * @param string $preg Regex.
+ * @param string $file Absolute path.
+ * @return string
+ */
+function tc_preg( string $preg, string $file ): string {
 	if ( ! file_exists( $file ) ) {
 		return '';
 	}
@@ -208,16 +271,21 @@ function tc_preg( $preg, $file ) {
 				$pos = strpos( $this_line, $error );
 				$pre = ( false !== $pos ? substr( $this_line, 0, $pos ) : false );
 			}
-			$pre        = ltrim( htmlspecialchars( $pre ) );
-			$bad_lines .= "<pre class='tc-grep'>" . __( 'Line ', 'theme-check' ) . ( $line_index + 1 ) . ': ' . $pre . htmlspecialchars( substr( stristr( $this_line, $error ), 0, 75 ) ) . '</pre>';
+			$pre        = ltrim( htmlspecialchars( (string) $pre ) );
+			$bad_lines .= "<pre class='tc-grep'>" . __( 'Line ', 'theme-check' ) . ( $line_index + 1 ) . ': ' . $pre . htmlspecialchars( substr( (string) stristr( $this_line, $error ), 0, 75 ) ) . '</pre>';
 		}
-		$line_index++;
-
+		++$line_index;
 	}
 	return str_replace( $error, '<span class="tc-grep">' . $error . '</span>', $bad_lines );
 }
 
-function tc_filename( $file ) {
+/**
+ * A theme file path relative to the theme root (best effort).
+ *
+ * @param string $file Absolute path.
+ * @return string
+ */
+function tc_filename( string $file ): string {
 	// If we know the WP_Theme object, we can get the exact path.
 	$filename = _get_filename_from_current_theme( $file );
 	if ( $filename ) {
@@ -225,7 +293,7 @@ function tc_filename( $file ) {
 	}
 
 	// If the $file exists within a theme-like folder, use that.
-	// Does not support themes nested in directories such as wp-content/themes/pub/wporg-themes/index.php
+	// Does not support themes nested in directories such as wp-content/themes/pub/wporg-themes/index.php.
 	if ( preg_match( '!/themes/[^/]+/(.*)$!i', $file, $m ) ) {
 		return $m[1];
 	}
@@ -241,7 +309,7 @@ function tc_filename( $file ) {
  * @return false|string The filename, or false on failure.
  * @access private
  */
-function _get_filename_from_current_theme( $file ) {
+function _get_filename_from_current_theme( string $file ): string|false {
 	global $theme_check_current_theme;
 	static $theme_files = array();
 	static $theme_path  = '';
@@ -251,35 +319,49 @@ function _get_filename_from_current_theme( $file ) {
 	}
 
 	// Fetch the files for the theme, once per theme.
-	if ( $theme_path != $theme_check_current_theme->get_stylesheet_directory() ) {
+	if ( $theme_path !== $theme_check_current_theme->get_stylesheet_directory() ) {
 		$theme_path = $theme_check_current_theme->get_stylesheet_directory();
 
 		$theme_files = $theme_check_current_theme->get_files(
-			null /* all file types */,
-			-1 /* infinite recursion */,
+			null, /* all file types */
+			-1, /* infinite recursion */
 			true /* include parent theme files */
 		);
 	}
 
-	return array_search( $file, $theme_files, true );
+	$relative = array_search( $file, $theme_files, true );
+
+	// Numeric file names come back as int keys; cast so the declared type holds.
+	return false === $relative ? false : (string) $relative;
 }
 
-function tc_trac( $e ) {
+/**
+ * Convert a result's HTML to Trac markup when TC_TRAC is defined.
+ *
+ * @param string $e Result HTML.
+ * @return string
+ */
+function tc_trac( string $e ): string {
 	$trac_left  = array( '<strong>', '</strong>' );
 	$trac_right = array( "'''", "'''" );
 	$html_link  = '/<a\s?href\s?=\s?[\'|"]([^"|\']*)[\'|"]>([^<]*)<\/a>/i';
 	$html_new   = '[$1 $2]';
 	if ( defined( 'TC_TRAC' ) ) {
-		$e = preg_replace( $html_link, $html_new, $e );
+		$e = (string) preg_replace( $html_link, $html_new, $e );
 		$e = str_replace( $trac_left, $trac_right, $e );
-		$e = preg_replace( '/<pre.*?>/', "\r\n{{{\r\n", $e );
+		$e = (string) preg_replace( '/<pre.*?>/', "\r\n{{{\r\n", $e );
 		$e = str_replace( '</pre>', "\r\n}}}\r\n", $e );
 	}
 	return $e;
 }
 
-// Strip comments from a PHP file in a way that will not change the underlying structure of the file.
-function tc_strip_comments( $code ) {
+/**
+ * Strip comments from a PHP file in a way that will not change the underlying structure of the file.
+ *
+ * @param string $code PHP source.
+ * @return string
+ */
+function tc_strip_comments( string $code ): string {
 	$strip    = array(
 		T_COMMENT     => true,
 		T_DOC_COMMENT => true,
@@ -315,7 +397,7 @@ function tc_strip_comments( $code ) {
  * @param  string $filename a filename/path.
  * @return boolean
  */
-function tc_is_other_file_in_dev_directory( $filename ) {
+function tc_is_other_file_in_dev_directory( string $filename ): bool {
 	$skip = false;
 	// Filterable List of dirs that you may want to skip other files in during
 	// development.
@@ -327,7 +409,7 @@ function tc_is_other_file_in_dev_directory( $filename ) {
 		)
 	);
 	foreach ( $dev_dirs as $dev_dir ) {
-		if ( strpos( $filename, $dev_dir ) ) {
+		if ( strpos( $filename, (string) $dev_dir ) ) {
 			$skip = true;
 			break;
 		}
@@ -338,19 +420,19 @@ function tc_is_other_file_in_dev_directory( $filename ) {
 /**
  * Adapt the Theme Checks if the theme is an experiment Full-Site Editing theme.
  *
- * @param array $php_files   The theme's PHP files.
- * @param array $css_files   The theme's CSS files.
- * @param array $other_files Any other theme files.
+ * @param array<string, string> $php_files   The theme's PHP files.
+ * @param array<string, string> $css_files   The theme's CSS files.
+ * @param array<string, string> $other_files Any other theme files.
  *
  * @return bool Whether the theme checks were adapted for FSE or not.
  */
-function tc_adapt_checks_for_fse_themes( $php_files, $css_files, $other_files ) {
+function tc_adapt_checks_for_fse_themes( array $php_files, array $css_files, array $other_files ): bool {
 	global $themechecks;
 
 	// Get a list of all non PHP and CSS file paths, relative to the theme root.
 	$other_filenames = array();
-	foreach ( $other_files as $path => $contents ) {
-		$other_filenames[] = tc_filename( $path );
+	foreach ( array_keys( $other_files ) as $path ) {
+		$other_filenames[] = tc_filename( (string) $path );
 	}
 
 	// Check whether this is a FSE theme by searching for an index.html block template.

@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Check for signs of worms and hacks.
  */
@@ -12,11 +14,18 @@ class Worms_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
-	function check( $php_files, $css_files, $other_files ) {
+	/**
+	 * Run the check.
+	 *
+	 * @param array<string, string> $php_files   File paths and content for PHP files.
+	 * @param array<string, string> $css_files   File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
+	 */
+	public function check( $php_files, $css_files, $other_files ): bool {
 		$ret       = true;
 		$php_files = array_merge( $php_files, $other_files );
 		$checks    = array(
@@ -53,7 +62,12 @@ class Worms_Check implements themecheck {
 	 *
 	 * @return array Error message.
 	 */
-	public function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

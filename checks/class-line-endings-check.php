@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Check if more than one line ending style is used.
  */
@@ -12,18 +14,18 @@ class Line_Endings_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 		$ret = true;
 		foreach ( $php_files as $php_key => $phpfile ) {
 			if ( preg_match( "/\r\n/", $phpfile ) ) {
@@ -33,11 +35,12 @@ class Line_Endings_Check implements themecheck {
 						'<span class="tc-lead tc-required">%s</span>: %s',
 						__( 'REQUIRED', 'theme-check' ),
 						sprintf(
+							/* translators: %s: file name */
 							__( 'Both DOS and UNIX style line endings were found in the file %s. This causes a problem with SVN repositories and must be corrected before the theme can be accepted. Please change the file to use only one style of line endings.', 'theme-check' ),
 							'<strong>' . $filename . '</strong>'
 						)
 					);
-					$ret           = false;
+					$ret = false;
 				}
 			}
 		}
@@ -49,17 +52,18 @@ class Line_Endings_Check implements themecheck {
 						'<span class="tc-lead tc-required">%s</span>: %s',
 						__( 'REQUIRED', 'theme-check' ),
 						sprintf(
+							/* translators: %s: file name */
 							__( 'Both DOS and UNIX style line endings were found in the file %1$s. This causes a problem with SVN repositories and must be corrected before the theme can be accepted. Please change the file to use only one style of line endings.', 'theme-check' ),
 							'<strong>' . $filename . '</strong>'
 						)
 					);
-					$ret           = false;
+					$ret = false;
 				}
 			}
 		}
 		foreach ( $other_files as $oth_key => $othfile ) {
 			$e = pathinfo( $oth_key );
-			if ( isset( $e['extension'] ) && in_array( $e['extension'], array( 'txt', 'js' ) ) ) {
+			if ( isset( $e['extension'] ) && in_array( $e['extension'], array( 'txt', 'js' ), true ) ) {
 				if ( preg_match( "/\r\n/", $othfile ) ) {
 					if ( preg_match( "/[^\r]\n/", $othfile ) ) {
 						$filename      = tc_filename( $oth_key );
@@ -67,11 +71,12 @@ class Line_Endings_Check implements themecheck {
 							'<span class="tc-lead tc-required">%s</span>: %s',
 							__( 'REQUIRED', 'theme-check' ),
 							sprintf(
+								/* translators: %s: file name */
 								__( 'Both DOS and UNIX style line endings were found in the file %1$s. This causes a problem with SVN repositories and must be corrected before the theme can be accepted. Please change the file to use only one style of line endings.', 'theme-check' ),
 								'<strong>' . $filename . '</strong>'
 							)
 						);
-						$ret           = false;
+						$ret = false;
 					}
 				}
 			}
@@ -84,7 +89,12 @@ class Line_Endings_Check implements themecheck {
 	 *
 	 * @return array Error message.
 	 */
-	public function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

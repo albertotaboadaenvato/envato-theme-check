@@ -8,6 +8,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Check for creation of admin menus.
  *
@@ -18,18 +20,18 @@ class Admin_Menu_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		$ret = true;
 
@@ -59,6 +61,7 @@ class Admin_Menu_Check implements themecheck {
 		// Check for add_admin_page's, except for add_theme_page.
 		// Note to TGMPA: Stop trying to bypass theme check.
 		$checks = array(
+			/* translators: %s: function name */
 			'/(?<!function)[^_>:](add_[a-z]+_page)/' => _x(
 				'Themes should not use <strong>%s()</strong>.',
 				'function name',
@@ -97,9 +100,9 @@ class Admin_Menu_Check implements themecheck {
 	/**
 	 * Get error messages from the checks.
 	 *
-	 * @return array Error message.
+	 * @return array<int, string> Error message.
 	 */
-	public function getError() {
+	public function getError(): array {
 		return $this->error;
 	}
 }

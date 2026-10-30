@@ -1,0 +1,9 @@
+/*
+Theme Name: Fixture screen-reader-text
+Version: 1.0
+Requires PHP: 7.4
+Tested up to: 6.8
+Text Domain: fixture-screen-reader-text
+License: GPL-2.0-or-later
+*/
+.screen-reader-text { clip: rect(1px, 1px, 1px, 1px); }

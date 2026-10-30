@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Check for files that are not allowed and files that are required.
  */
@@ -12,18 +14,18 @@ class File_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		$ret = true;
 
@@ -67,7 +69,7 @@ class File_Check implements themecheck {
 
 		$fse_find = array_filter(
 			array_keys( $other_files ),
-			function( $file_name ) {
+			function ( $file_name ) {
 				if ( false !== stripos( $file_name, 'templates/index.html' ) || false !== stripos( $file_name, 'block-templates/index.html' ) ) {
 					return true;
 				}
@@ -77,17 +79,19 @@ class File_Check implements themecheck {
 		);
 
 		if ( ! empty( $fse_find ) ) {
-			$fse_not_needed = array_search( 'index.php', $musthave );
+			$fse_not_needed = array_search( 'index.php', $musthave, true );
 			unset( $musthave[ $fse_not_needed ] );
 		}
 
 		checkcount();
 
 		foreach ( $blocklist as $file => $reason ) {
-			if ( $filename     = preg_grep( '/' . $file . '/', $filenames ) ) {
+			$filename = preg_grep( '/' . $file . '/', $filenames );
+			if ( $filename ) {
 				$commons = array_intersect( $filename, $allowlist );
 				foreach ( $commons as $common ) {
-					if ( ( $allowed_key = array_search( $common, $filename ) ) !== false ) {
+					$allowed_key = array_search( $common, $filename );
+					if ( false !== $allowed_key ) {
 						unset( $filename[ $allowed_key ] );
 					}
 				}
@@ -99,26 +103,28 @@ class File_Check implements themecheck {
 					'<span class="tc-lead tc-required">%s</span>: %s',
 					__( 'REQUIRED', 'theme-check' ),
 					sprintf(
+						/* translators: 1: file name, 2: reason the file is not allowed */
 						__( '%1$s %2$s found. This file must not be in the production version of the theme.', 'theme-check' ),
 						'<strong>' . $error . '</strong>',
 						$reason
 					)
 				);
-				$ret           = false;
+				$ret = false;
 			}
 		}
 
 		foreach ( $musthave as $file ) {
-			if ( ! in_array( $file, $filenames ) ) {
+			if ( ! in_array( $file, $filenames, true ) ) {
 				$this->error[] = sprintf(
 					'<span class="tc-lead tc-required">%s</span>: %s',
 					__( 'REQUIRED', 'theme-check' ),
 					sprintf(
+						/* translators: %s: file name */
 						__( 'Could not find the file %s in the theme.', 'theme-check' ),
 						'<strong>' . $file . '</strong>'
 					)
 				);
-				$ret           = false;
+				$ret = false;
 			}
 		}
 
@@ -128,9 +134,9 @@ class File_Check implements themecheck {
 	/**
 	 * Get error messages from the checks.
 	 *
-	 * @return array Error message.
+	 * @return array<int, string> Error message.
 	 */
-	public function getError() {
+	public function getError(): array {
 		return $this->error;
 	}
 }

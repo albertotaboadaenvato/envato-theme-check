@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Checks if nav menus are supported and if theme location or menu names are used.
  */
@@ -12,18 +14,18 @@ class Nav_Menu_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		$ret        = true;
 		$name_check = false;
@@ -47,12 +49,13 @@ class Nav_Menu_Check implements themecheck {
 				'<span class="tc-lead tc-required">%s</span>: %s',
 				__( 'REQUIRED', 'theme-check' ),
 				sprintf(
+					/* translators: 1: deprecated code, 2: link to register_nav_menus() */
 					__( 'Reference to %1$s was found in the theme. This should be removed and %2$s used instead.', 'theme-check' ),
 					'<strong>add_theme_support( "menus" )</strong>',
 					'<a href="https://developer.wordpress.org/reference/functions/register_nav_menus/">register_nav_menus()</a>'
 				)
 			);
-			$ret           = false;
+			$ret = false;
 		}
 
 		foreach ( $php_files as $file_path => $file_content ) {
@@ -73,12 +76,13 @@ class Nav_Menu_Check implements themecheck {
 						'<span class="tc-lead tc-warning">%s</span>: %s',
 						__( 'WARNING', 'theme-check' ),
 						sprintf(
+							/* translators: 1: file name, 2: wp_nav_menu() argument */
 							__( 'A menu without a theme_location was found in %1$s. %2$s is used inside wp_nav_menu(). You must manually check if the theme_location is included.', 'theme-check' ),
 							'<strong>' . $filename . '</strong>',
 							'<code>' . $name[0] . '</code>'
 						)
 					);
-					$name_check    = true;
+					$name_check = true;
 				} else {
 					checkcount();
 					if ( strpos( $menu_part[0], 'theme_location' ) === false ) {
@@ -86,27 +90,29 @@ class Nav_Menu_Check implements themecheck {
 							'<span class="tc-lead tc-required">%s</span>: %s',
 							__( 'REQUIRED', 'theme-check' ),
 							sprintf(
+								/* translators: %s: file name */
 								__( 'A menu without a theme_location was found in %1$s.', 'theme-check' ),
 								'<strong>' . $filename . '</strong>'
 							)
 						);
-						$ret           = false;
-						$name_check    = true;
+						$ret        = false;
+						$name_check = true;
 					}
 				}
 
 				// We only need to warn for the menu name if theme location is not set.
 				checkcount();
-				if ( $name_check === true && preg_match( '/("|\')menu("|\').*?=>/', $menu_part[0] ) ) {
+				if ( true === $name_check && preg_match( '/("|\')menu("|\').*?=>/', $menu_part[0] ) ) {
 					$this->error[] = sprintf(
 						'<span class="tc-lead tc-required">%s</span>: %s',
 						__( 'REQUIRED', 'theme-check' ),
 						sprintf(
+							/* translators: %s: file name */
 							__( 'A menu name is being used for a menu in %1$s. By using menu name, the menu would be required to have the exact same name in the WordPress admin area. Use a theme_location instead.', 'theme-check' ),
 							'<strong>' . $filename . '</strong>'
 						)
 					);
-					$ret           = false;
+					$ret = false;
 				}
 			}
 		}
@@ -119,7 +125,12 @@ class Nav_Menu_Check implements themecheck {
 	 *
 	 * @return array Error message.
 	 */
-	public function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

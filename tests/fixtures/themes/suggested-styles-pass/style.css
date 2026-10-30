@@ -1,0 +1,21 @@
+/*
+Theme Name: Fixture suggested-styles
+Description: Fixture.
+Author: Fixture Author
+Version: 1.0
+Requires PHP: 7.4
+Tested up to: 6.8
+Text Domain: fixture-suggested-styles
+License: GPL-2.0-or-later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Theme URI: https://example.com/t
+Author URI: https://example.com
+*/
+.sticky{}
+.bypostauthor{}
+.alignleft{}
+.alignright{}
+.aligncenter{}
+.wp-caption{}
+.wp-caption-text{}
+.gallery-caption{}

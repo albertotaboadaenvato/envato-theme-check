@@ -7,6 +7,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Check for code that is not allowed.
  *
@@ -16,18 +18,18 @@ class Bad_Things_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 		$ret = true;
 
 		$checks = array(
@@ -58,14 +60,15 @@ class Bad_Things_Check implements themecheck {
 						'<span class="tc-lead tc-required">%s</span>: %s %s %s',
 						__( 'REQUIRED', 'theme-check' ),
 						sprintf(
+							/* translators: 1: code found, 2: file name */
 							__( 'Found %1$s in the file %2$s.', 'theme-check' ),
 							'<strong>' . $error . '</strong>',
 							'<strong>' . $filename . '</strong>'
 						),
 						$check,
 						$grep
-					);
-					$ret           = false;
+					) . ( str_starts_with( $key, '/base64_' ) ? tc_finding_suffix( 'bad-things/base64' ) : '' );
+					$ret = false;
 				}
 			}
 		}
@@ -86,6 +89,7 @@ class Bad_Things_Check implements themecheck {
 						'<span class="tc-lead tc-required">%s</span>: %s %s %s',
 						__( 'REQUIRED', 'theme-check' ),
 						sprintf(
+							/* translators: 1: code found, 2: file name */
 							__( 'Found <strong>%1$s</strong> in the file <strong>%2$s</strong>.', 'theme-check' ),
 							$error,
 							$filename
@@ -93,7 +97,7 @@ class Bad_Things_Check implements themecheck {
 						$check,
 						$grep
 					);
-					$ret           = false;
+					$ret = false;
 				}
 			}
 		}
@@ -104,9 +108,9 @@ class Bad_Things_Check implements themecheck {
 	/**
 	 * Get error messages from the checks.
 	 *
-	 * @return array Error message.
+	 * @return array<int, string> Error message.
 	 */
-	public function getError() {
+	public function getError(): array {
 		return $this->error;
 	}
 }

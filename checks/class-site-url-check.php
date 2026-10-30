@@ -6,6 +6,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Check for site_url
  */
@@ -13,18 +15,18 @@ class Site_URL_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		checkcount();
 
@@ -36,10 +38,11 @@ class Site_URL_Check implements themecheck {
 					'<span class="tc-lead tc-info">%s</span> %s',
 					__( 'INFO', 'theme-check' ),
 					sprintf(
+						/* translators: %s: file name */
 						__( 'site_url() or get_site_url() was found in %s. site_url() references the URL where the WordPress files are located. Use home_url() if the intention is to point to the site address (home page), and in the search form.', 'theme-check' ),
 						'<strong>' . $filename . '</strong>'
 					)
-				);
+				) . tc_finding_suffix( 'site-url' );
 			}
 		}
 
@@ -51,7 +54,12 @@ class Site_URL_Check implements themecheck {
 	 *
 	 * @return array Error message.
 	 */
-	public function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

@@ -5,6 +5,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Check if translation functions have a text domain.
  */
@@ -12,28 +14,38 @@ class TextDomain_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Theme name
 	 *
 	 * @var string $name
 	 */
-	protected $name = '';
+	protected string $name = '';
 
 	/**
 	 * Theme slug
 	 *
 	 * @var string $slug
 	 */
-	protected $slug = '';
+	protected string $slug = '';
 
-	protected $is_wporg = false;
+	/**
+	 * Whether the theme is a WordPress.org core theme or upload.
+	 *
+	 * @var bool
+	 */
+	protected bool $is_wporg = false;
 
 	// Rules come from WordPress core tool makepot.php, modified to have domain info.
-	var $rules = array(
+	/**
+	 * Lookup data.
+	 *
+	 * @var array<string, array<int, string>>
+	 */
+	protected array $rules = array(
 		'__'                   => array( 'string', 'domain' ),
 		'_e'                   => array( 'string', 'domain' ),
 		'_c'                   => array( 'string', 'domain' ),
@@ -58,9 +70,19 @@ class TextDomain_Check implements themecheck {
 	);
 
 	// Core names their themes differently.
-	var $exceptions = array( 'twentyten', 'twentyeleven', 'twentytwelve', 'twentythirteen', 'twentyfourteen', 'twentyfifteen', 'twentysixteen', 'twentyseventeen', 'twentyeighteen', 'twentynineteen', 'twentytwenty', 'twentytwentyone' );
+	/**
+	 * Lookup data.
+	 *
+	 * @var array<int, string>
+	 */
+	protected array $exceptions = array( 'twentyten', 'twentyeleven', 'twentytwelve', 'twentythirteen', 'twentyfourteen', 'twentyfifteen', 'twentysixteen', 'twentyseventeen', 'twentyeighteen', 'twentynineteen', 'twentytwenty', 'twentytwentyone' );
 
-	function set_context( $data ) {
+	/**
+	 * Receive the check context.
+	 *
+	 * @param array<string, mixed> $data Check context (theme, slug, ...).
+	 */
+	public function set_context( array $data ): void {
 		if ( isset( $data['theme']['Name'] ) ) {
 			$this->name = $data['theme']['Name'];
 		}
@@ -74,11 +96,11 @@ class TextDomain_Check implements themecheck {
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 		$ret   = true;
 		$error = '';
 		checkcount();
@@ -99,12 +121,15 @@ class TextDomain_Check implements themecheck {
 			$args_started   = false;
 			$parens_balance = 0;
 			$found_domain   = false;
+			$func           = '';
+			$args           = array();
+			$args_count     = 0;
 
 			foreach ( $tokens as $token ) {
 				$string_success = false;
 				if ( is_array( $token ) ) {
 					list( $id, $text ) = $token;
-					if ( T_STRING == $id && in_array( $text, $funcs ) ) {
+					if ( T_STRING == $id && in_array( $text, $funcs, true ) ) {
 						$in_func        = true;
 						$func           = $text;
 						$parens_balance = 0;
@@ -131,28 +156,29 @@ class TextDomain_Check implements themecheck {
 									'<span class="tc-lead tc-warning">%s</span>: %s',
 									__( 'WARNING', 'theme-check' ),
 									sprintf(
+										/* translators: 1: file name, 2: function name, 3: arguments, 4: code excerpt */
 										__( 'Found a translation function that has an incorrect number of arguments in the file %1$s. Function %2$s, with the arguments %3$s. %4$s', 'theme-check' ),
 										$filename,
 										'<strong>' . $func . '</strong>',
 										'<strong>' . implode( ', ', $new_args ) . '</strong>',
 										$grep
 									)
-								);
-							} elseif ( $this->rules[ $func ][ $args_count ] == 'domain' ) {
-								// Strip quotes from the domain, avoids 'domain' and "domain" not being recognized as the same
+								) . tc_finding_suffix( 'textdomain' );
+							} elseif ( 'domain' == $this->rules[ $func ][ $args_count ] ) {
+								// Strip quotes from the domain, avoids 'domain' and "domain" not being recognized as the same.
 								$text         = str_replace( array( '"', "'" ), '', $text );
 								$domains[]    = $text;
 								$found_domain = true;
 							}
-							if ( $parens_balance == 1 ) {
-								$args_count++;
+							if ( 1 == $parens_balance ) {
+								++$args_count;
 								$args[] = $text;
 							}
 						}
 					}
 					$token = $text;
 				} elseif ( '(' == $token ) {
-					if ( $parens_balance == 0 ) {
+					if ( 0 == $parens_balance ) {
 						$args         = array();
 						$args_started = true;
 						$args_count   = 0;
@@ -177,13 +203,14 @@ class TextDomain_Check implements themecheck {
 								'<span class="tc-lead tc-warning">%s</span>: %s',
 								__( 'WARNING', 'theme-check' ),
 								sprintf(
+									/* translators: 1: file name, 2: function name, 3: arguments, 4: code excerpt */
 									__( 'Found a translation function that is missing a text-domain in the file %1$s. Function %2$s, with the arguments %3$s. %4$s', 'theme-check' ),
 									$filename,
 									'<strong>' . $func . '</strong>',
 									'<strong>' . $error . '</strong>',
 									$grep
 								)
-							);
+							) . tc_finding_suffix( 'textdomain' );
 						}
 
 						$in_func      = false;
@@ -199,33 +226,36 @@ class TextDomain_Check implements themecheck {
 		$domainlist   = implode( ', ', $domains );
 		$domainscount = count( $domains );
 
-		// ignore core themes and uploads on w.org for this one check
-		if ( ! in_array( $this->slug, $this->exceptions ) && ! $this->is_wporg ) {
+		// Ignore core themes and uploads on w.org for this one check.
+		if ( ! in_array( $this->slug, $this->exceptions, true ) && ! $this->is_wporg ) {
 			$correct_domain = sanitize_title_with_dashes( $this->name );
 			if ( $this->slug != $correct_domain ) {
 				$this->error[] = sprintf(
 					'<span class="tc-lead tc-warning">%s</span>: %s %s',
 					__( 'WARNING', 'theme-check' ),
 					sprintf(
+						/* translators: %s: expected theme slug */
 						__( "Your theme appears to be in the wrong directory for the theme name. The directory name must match the slug of the theme. This theme's correct slug and text-domain is %s.", 'theme-check' ),
 						'<strong>' . $correct_domain . '</strong>'
 					),
 					__( '(If this is a child theme, you can ignore this error.)', 'theme-check' )
-				);
+				) . tc_finding_suffix( 'textdomain' );
 			} elseif ( ! empty( $domains ) && ! in_array( $correct_domain, $domains ) ) {
 				$this->error[] = sprintf(
 					'<span class="tc-lead tc-required">%s</span>: %s %s',
 					__( 'REQUIRED', 'theme-check' ),
 					sprintf(
+						/* translators: %s: text domains used */
 						__( "This theme text domain does not match the theme's slug. The text domain used: %s", 'theme-check' ),
 						'<strong>' . $domainlist . '</strong>'
 					),
 					sprintf(
+						/* translators: %s: expected theme slug */
 						__( "This theme's correct slug and text-domain is %s.", 'theme-check' ),
 						'<strong>' . $correct_domain . '</strong>'
 					)
-				);
-				$ret           = false;
+				) . tc_finding_suffix( 'textdomain' );
+				$ret = false;
 			}
 		}
 
@@ -235,16 +265,18 @@ class TextDomain_Check implements themecheck {
 				__( 'WARNING', 'theme-check' ),
 				__( 'More than one text-domain is being used in this theme. This means the theme will not be compatible with WordPress.org language packs.', 'theme-check' ),
 				sprintf(
+					/* translators: %s: comma-separated list of text domains */
 					__( 'The domains found are %s.', 'theme-check' ),
 					'<strong>' . $domainlist . '</strong>'
 				)
-			);
+			) . tc_finding_suffix( 'textdomain' );
 		} else {
 			$this->error[] = sprintf(
 				'<span class="tc-lead tc-info">%s</span>: %s %s',
 				__( 'INFO', 'theme-check' ),
 				__( "Only one text-domain is being used in this theme. Make sure it matches the theme's slug correctly so that the theme will be compatible with WordPress.org language packs.", 'theme-check' ),
 				sprintf(
+					/* translators: %s: text domain */
 					__( 'The domain found is %s.', 'theme-check' ),
 					'<strong>' . $domainlist . '</strong>'
 				)
@@ -259,7 +291,12 @@ class TextDomain_Check implements themecheck {
 		return $ret;
 	}
 
-	function getError() {
+	/**
+	 * Get error messages.
+	 *
+	 * @return array<int, string>
+	 */
+	public function getError(): array {
 		return $this->error;
 	}
 }

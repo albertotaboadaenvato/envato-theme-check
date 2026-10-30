@@ -7,6 +7,8 @@
  * @package Theme Check
  */
 
+declare(strict_types=1);
+
 /**
  * Checks for common escaping issues.
  */
@@ -14,18 +16,18 @@ class Escaping_Check implements themecheck {
 	/**
 	 * Error messages, warnings and info notices.
 	 *
-	 * @var array $error
+	 * @var array<int, string> $error
 	 */
-	protected $error = array();
+	protected array $error = array();
 
 	/**
 	 * Check that return true for good/okay/acceptable, false for bad/not-okay/unacceptable.
 	 *
-	 * @param array $php_files File paths and content for PHP files.
-	 * @param array $css_files File paths and content for CSS files.
-	 * @param array $other_files Folder names, file paths and content for other files.
+	 * @param array<string, string> $php_files File paths and content for PHP files.
+	 * @param array<string, string> $css_files File paths and content for CSS files.
+	 * @param array<string, string> $other_files Folder names, file paths and content for other files.
 	 */
-	public function check( $php_files, $css_files, $other_files ) {
+	public function check( $php_files, $css_files, $other_files ): bool {
 
 		$ret = true;
 
@@ -54,13 +56,14 @@ class Escaping_Check implements themecheck {
 					'<span class="tc-lead tc-warning">%s</span>: %s %s',
 					__( 'WARNING', 'theme-check' ),
 					sprintf(
+						/* translators: 1: code found, 2: file name, 3: escaping documentation URL */
 						__( 'Found %1$s in %2$s. <a href="%3$s" target="_blank">Theme options must be escaped (Opens in a new window).</a>. ', 'theme-check' ),
 						'<code>' . esc_html( $error ) . '</code>',
 						'<strong>' . $filename . '</strong>',
 						'https://developer.wordpress.org/themes/theme-security/data-sanitization-escaping/#escaping-securing-output'
 					),
 					$grep
-				);
+				) . tc_finding_suffix( 'escaping' );
 
 			}
 
@@ -74,13 +77,14 @@ class Escaping_Check implements themecheck {
 						'<span class="tc-lead tc-warning">%s</span>: %s %s',
 						__( 'WARNING', 'theme-check' ),
 						sprintf(
+							/* translators: 1: code found, 2: file name, 3: explanation */
 							__( 'Found %1$s in %2$s. %3$s. A manual review is needed.', 'theme-check' ),
 							'<code>' . esc_html( $error ) . '</code>',
 							'<strong>' . $filename . '</strong>',
 							$check
 						),
 						$grep
-					);
+					) . tc_finding_suffix( 'escaping' );
 				}
 			}
 
@@ -94,13 +98,14 @@ class Escaping_Check implements themecheck {
 						'<span class="tc-lead tc-required">%s</span>: %s %s',
 						__( 'REQUIRED', 'theme-check' ),
 						sprintf(
+							/* translators: 1: code found, 2: file name, 3: explanation */
 							__( 'Found %1$s in %2$s. %3$s. A manual review is needed.', 'theme-check' ),
 							'<code>' . esc_html( $error ) . '</code>',
 							'<strong>' . $filename . '</strong>',
 							$check
 						),
 						$grep
-					);
+					) . tc_finding_suffix( 'escaping' );
 
 					$ret = false;
 				}
@@ -112,9 +117,9 @@ class Escaping_Check implements themecheck {
 	/**
 	 * Get error messages from the checks.
 	 *
-	 * @return array Error message.
+	 * @return array<int, string> Error message.
 	 */
-	public function getError() {
+	public function getError(): array {
 		return $this->error;
 	}
 }
